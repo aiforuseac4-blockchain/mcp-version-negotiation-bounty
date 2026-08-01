@@ -1,19 +1,35 @@
 #!/bin/sh
-set -eu
+# accept-version.sh <requested> <client-supported-csv> <server-selected>
+# Exit 0 and print selected version only if both requested and selected
+# are exact whole tokens in the client's comma-separated supported list.
 
-[ "$#" -eq 3 ] || exit 64
+set -e
 
-requested=$1
-supported=$2
-selected=$3
+requested="$1"
+client_supported="$2"
+server_selected="$3"
 
-# Deliberately faulty starter: substring matching can accept partial versions,
-# and the requested version is never checked against the client's list.
-case "$supported" in
-  *"$selected"*)
-    printf '%s\n' "$selected"
-    ;;
-  *)
+# Check if a version is an exact whole token in the comma-separated list
+is_supported() {
+    version="$1"
+    supported_list="$2"
+    
+    # Add commas around the list for exact matching
+    # This prevents substring matches like "2025-06-18" matching "2025-06-18-preview"
+    case ",${supported_list}," in
+        *,${version},*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# Both requested and selected must be exact members of the supported list
+if is_supported "$requested" "$client_supported" && is_supported "$server_selected" "$client_supported"; then
+    printf '%s\n' "$server_selected"
+    exit 0
+else
     exit 1
-    ;;
-esac
+fi
